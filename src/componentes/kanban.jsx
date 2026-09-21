@@ -22,30 +22,61 @@ import Header from "./Header";
 import Contador from "./Contador";
 import ListaTarefas from "./ListaTarefas"; // reutilizado nas colunas
 import { useState, useEffect } from "react";
+import api from "../api";
 
 function Kanban() {
   // ── Estado das tarefas — inicializador de função carrega do localStorage ──
   // Sem alteração em relação à versão anterior
-  const [tarefas, setTarefas] = useState(() => {
-    const tarefasSalvas = localStorage.getItem("tarefas");
-    if (!tarefasSalvas) return [];
-    const tarefasConvertidas = JSON.parse(tarefasSalvas);
-    return Array.isArray(tarefasConvertidas) ? tarefasConvertidas : [];
-  });
+  const [tarefas, setTarefas] = useState([]);
+  const [carregando, setCarregando] = useState(true);
+  const[erro, setErro] = useState('');
 
-  const [proximaId, setProximaId] = useState(1);
-  const [texto, setTexto] = useState("");
-  const [prioridade, setPrioridade] = useState("media");
 
   // ── useEffect: salva tarefas no localStorage sempre que mudar ─────────────
   // Sem alteração — persiste o campo coluna automaticamente
   useEffect(() => {
-    localStorage.setItem("tarefas", JSON.stringify(tarefas));
-  }, [tarefas]);
+    async function carregandoTarefas() {
+      try {
+        setCarregando (true);
+        setErro ("");
+      
+        await new Promise((resolver) => setTimeout(resolver,2000));
+        const resposta = await api.get('/tarefas');
+        setTarefas(resposta.data);
+     
+      }catch (e) {
+        setErro("Erro ao carregar tarefas. Verifique a conexao");
+          console.error(e);
+      }finally{
+        setCarregando(false);
+      }
+    }
+    carregandoTarefas();
+  }, []);
 
   // ── MODIFICAÇÃO 1: adicionarTarefa ganha o campo coluna ──────────────────
   // Toda tarefa nova começa na primeira coluna: 'afazer'
   // Valores possíveis: 'afazer' | 'andamento' | 'concluido'
+  async function deletarTarefa(id) {
+try{
+  await api.delete(`/tarefas/${id}`);
+  setTarefas(
+    tarefas.filter(t => t.id !== id)
+  );
+}    catch (erro) {
+  setErro('Erro ao deletar.');
+}
+   
+  }
+
+  async function salvarTarefas(dados) {
+    if (dados.id === undefined) {
+      try{
+        const resposta  = await api.post('/tarefas', dados);
+      }
+    }
+ }
+
   const adicionarTarefa = () => {
     if (texto.trim() === "") return;
 
